@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社内スポ活ポイント - SpoPoin</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts Inter & Noto Sans JP -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .pulse-subtle {
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(59, 130, 246, 0.4); }
+            50% { border-color: rgba(59, 130, 246, 1); }
+        }
+    </style>
+</head>
+<body class="text-slate-800 bg-slate-50 min-h-screen">
+    <div id="app" 
+         :class="[isDarkMode ? 'bg-slate-900 text-slate-100 dark-mode' : 'bg-white text-slate-800', 'max-w-md md:max-w-4xl mx-auto min-h-screen flex flex-col shadow-xl relative pb-20 md:pb-6 transition-colors duration-200']">
+        
+        <!-- Header -->
+        <header :class="themeHeaderBg" class="text-white p-4 sticky top-0 z-30 shadow-md transition-colors duration-300">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center font-black text-xl shadow-inner">
+                        <i class="fa-solid fa-person-running"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-lg tracking-tight leading-tight">社内スポ活 SpoPoin</h1>
+                        <p class="text-xs text-white/80 font-medium">運動してインセンティブ獲得！</p>
+                    </div>
+                </div>
+
+                <!-- Admin Mode & UI Customize Buttons -->
+                <div class="flex items-center space-x-1.5">
+                    <button @click="showThemeModal = true" 
+                            title="UIデザイン編集"
+                            class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition shadow-sm">
+                        <i class="fa-solid fa-palette text-xs"></i>
+                    </button>
+                    
+                    <button @click="isAdmin = !isAdmin" 
+                            :class="isAdmin ? 'bg-amber-400 text-slate-900 font-bold' : 'bg-white/20 text-white hover:bg-white/30'"
+                            class="text-xs px-2.5 py-1.5 rounded-full transition flex items-center gap-1 shadow-sm">
+                        <i class="fa-solid" :class="isAdmin ? 'fa-user-gear' : 'fa-user'"></i>
+                        <span class="hidden sm:inline">{{ isAdmin ? '管理者' : '一般' }}</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Points Overview Banner -->
+            <div class="mt-4 bg-white/10 backdrop-blur-md rounded-2xl p-3.5 border border-white/20 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="relative">
+                        <img :src="user.avatar" class="w-12 h-12 rounded-full border-2 border-white object-cover shadow" alt="User Avatar">
+                        <span class="absolute -bottom-1 -right-1 bg-amber-400 text-slate-900 text-[10px] font-black px-1.5 py-0.5 rounded-full shadow">
+                            Lv.{{ user.level }}
+                        </span>
+                    </div>
+                    <div>
+                        <div class="text-xs text-white/80 font-medium flex items-center gap-1">
+                            <span>{{ user.department }}</span> • <span>{{ user.name }}</span>
+                        </div>
+                        <div class="text-2xl font-black text-amber-300 tracking-tight flex items-baseline gap-1">
+                            <span>{{ user.points.toLocaleString() }}</span>
+                            <span class="text-xs font-bold text-white">pt</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button @click="activeTab = 'rewards'" class="bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold text-xs px-3.5 py-2 rounded-xl shadow-lg transition transform active:scale-95 flex items-center gap-1">
+                    <i class="fa-solid fa-gift"></i>
+                    <span>ポイントを使う</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content View Area -->
+        <main class="flex-1 p-4 md:p-6 overflow-y-auto" :class="isDarkMode ? 'bg-slate-900' : 'bg-slate-50'">
+
+            <!-- TAB 1: HOME -->
+            <div v-if="activeTab === 'home'" class="space-y-5">
+                
+                <!-- Campaign Alert Banner -->
+                <div class="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-200/80 rounded-2xl p-3.5 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0">
+                        <i class="fa-solid fa-bullhorn text-sm"></i>
+                    </div>
+                    <div class="text-xs text-slate-700 leading-relaxed">
+                        <span class="font-bold text-slate-900">廃部撲滅キャンペーン実施中！</span><br>
+                        今月運動部イベントに新規参加で<strong class="text-amber-600">+100ptボーナス</strong>プレゼント！同僚を誘って参加しよう！
+                    </div>
+                </div>
+
+                <!-- AI Spopoin Coach Widget -->
+                <div class="bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-900 text-white rounded-2xl p-4 shadow-lg border border-indigo-500/30 relative overflow-hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-8 h-8 rounded-xl bg-indigo-500/30 border border-indigo-400/40 text-indigo-300 flex items-center justify-center font-bold">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            </span>
+                            <div>
+                                <h3 class="font-extrabold text-sm text-indigo-100">AIスポ活コンシェルジュ</h3>
+                                <p class="text-[10px] text-indigo-300">Gemini AIが今のあなたに最適な運動部活をご提案！</p>
+                            </div>
+                        </div>
+                        <span class="text-[9px] bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 px-2 py-0.5 rounded-full font-bold">Gemini AI</span>
+                    </div>
+
+                    <div class="space-y-2 mt-3">
+                        <div class="flex gap-2">
+                            <input v-model="aiCoachInput" 
+                                   @keyup.enter="generateCoachAdvice"
+                                   type="text" 
+                                   placeholder="例: 「デスクワークで肩こりがひどい」「初心者向けで汗をかきたい」" 
+                                   class="flex-1 bg-white/10 border border-indigo-300/30 text-white placeholder-indigo-300/60 text-xs px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                            <button @click="generateCoachAdvice" 
+                                    :disabled="isAiCoachLoading" 
+                                    class="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1 shrink-0">
+                                <i v-if="isAiCoachLoading" class="fa-solid fa-spinner fa-spin"></i>
+                                <i v-else class="fa-solid fa-paper-plane"></i>
+                                <span>相談</span>
+                            </button>
+                        </div>
+
+                        <!-- Quick Choice Tags -->
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            <button @click="aiCoachInput = '肩こり・腰痛を改善したい'; generateCoachAdvice();" class="text-[10px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded-lg text-indigo-200 transition">🧘‍♀️ 肩こり・腰痛ケア</button>
+                            <button @click="aiCoachInput = '運動不足なので楽しく汗を流したい'; generateCoachAdvice();" class="text-[10px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded-lg text-indigo-200 transition">⚽️ 初心者スポーツ</button>
+                            <button @click="aiCoachInput = '短時間でリフレッシュしたい'; generateCoachAdvice();" class="text-[10px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded-lg text-indigo-200 transition">🏃‍♂️ スキマ時間リフレッシュ</button>
+                        </div>
+
+                        <!-- AI Coach Output Box -->
+                        <div v-if="aiCoachResult" class="mt-3 bg-white/10 backdrop-blur border border-indigo-400/30 rounded-xl p-3 text-xs leading-relaxed text-indigo-100 animate-fadeIn">
+                            <div class="font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+                                <i class="fa-solid fa-robot"></i> AIコーチのアドバイス:
+                            </div>
+                            <p class="whitespace-pre-line">{{ aiCoachResult }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Check-in Button -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl font-bold shrink-0">
+                            <i class="fa-solid fa-qrcode"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm">本日部活動に参加しますか？</h3>
+                            <p class="text-xs text-slate-500">会場のQRコード読み取り、またはワンタップで参加登録！</p>
+                        </div>
+                    </div>
+                    <button @click="openCheckInModal()" class="w-full md:w-auto bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:shadow-lg transition text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>今すぐチェックイン (+100pt〜)</span>
+                    </button>
+                </div>
+
+                <!-- Upcoming Joined Events -->
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="font-extrabold text-slate-800 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-check text-emerald-600"></i>
+                            参加予定のイベント
+                        </h2>
+                        <button @click="activeTab = 'events'" class="text-xs text-emerald-600 font-bold hover:underline">
+                            すべて見る →
+                        </button>
+                    </div>
+
+                    <div v-if="joinedEvents.length === 0" class="bg-slate-100/70 border border-dashed border-slate-300 rounded-2xl p-6 text-center text-xs text-slate-500">
+                        <i class="fa-regular fa-calendar-xmark text-2xl text-slate-400 mb-2 block"></i>
+                        現在参加予約中のイベントはありません。<br>「イベントを探す」から部活動に参加してみよう！
+                    </div>
+
+                    <div class="space-y-3">
+                        <div v-for="event in joinedEvents" :key="event.id" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex justify-between items-center">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 rounded-xl flex flex-col items-center justify-center font-bold text-white shadow-sm" :class="getClubColor(event.clubType)">
+                                    <span class="text-[10px] uppercase tracking-wider opacity-80">{{ event.month }}</span>
+                                    <span class="text-lg leading-none">{{ event.day }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 mb-1 inline-block">
+                                        {{ event.clubName }}
+                                    </span>
+                                    <h4 class="font-bold text-slate-800 text-sm leading-tight">{{ event.title }}</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5"><i class="fa-regular fa-clock mr-1"></i>{{ event.time }} @ {{ event.location }}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="bg-amber-100 text-amber-800 font-black text-xs px-2.5 py-1 rounded-lg inline-block">
+                                    +{{ event.points }}pt
+                                </span>
+                                <button @click="openCheckInModal(event)" class="mt-2 block text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-lg transition border border-emerald-200">
+                                    チェックイン
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Clubs Quick Cards -->
+                <div>
+                    <h2 class="font-extrabold text-slate-800 text-base mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-users text-emerald-600"></i>
+                        社内運動部一覧（廃部危機アラート）
+                    </h2>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div v-for="club in clubs" :key="club.id" class="bg-white p-3.5 rounded-2xl border shadow-sm relative overflow-hidden flex flex-col justify-between" :class="club.activeMembers < 8 ? 'border-rose-300' : 'border-slate-200'">
+                            <!-- Danger Badge -->
+                            <div v-if="club.activeMembers < 8" class="absolute top-0 right-0 bg-rose-500 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-0.5">
+                                <i class="fa-solid fa-triangle-exclamation"></i> 廃部注意
+                            </div>
+                            
+                            <div>
+                                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white mb-2 shadow-sm text-base" :class="club.bgColor">
+                                    <i :class="club.icon"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-800 text-sm leading-tight">{{ club.name }}</h3>
+                                <p class="text-[11px] text-slate-500 mt-1">アクティブ数: <strong :class="club.activeMembers < 8 ? 'text-rose-600 font-extrabold' : 'text-slate-700'">{{ club.activeMembers }}名</strong></p>
+                            </div>
+
+                            <button @click="filterClubEvents(club.name)" class="mt-3 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-1.5 rounded-xl transition text-center">
+                                イベントを見る
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TAB 2: EVENTS SEARCH & JOIN -->
+            <div v-if="activeTab === 'events'" class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-extrabold text-slate-800 text-lg">部活イベントを探す</h2>
+                    <span class="text-xs text-slate-500">全 {{ filteredEvents.length }} 件</span>
+                </div>
+
+                <!-- Filter Pills -->
+                <div class="flex space-x-2 overflow-x-auto pb-2 scrollbar-none">
+                    <button @click="selectedClubFilter = 'ALL'" 
+                            :class="selectedClubFilter === 'ALL' ? 'bg-slate-800 text-white font-bold' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'"
+                            class="text-xs px-3 py-1.5 rounded-full whitespace-nowrap transition">
+                        すべて
+                    </button>
+                    <button v-for="club in clubs" :key="club.id" 
+                            @click="selectedClubFilter = club.name"
+                            :class="selectedClubFilter === club.name ? 'bg-emerald-600 text-white font-bold' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'"
+                            class="text-xs px-3 py-1.5 rounded-full whitespace-nowrap transition">
+                        {{ club.name }}
+                    </button>
+                </div>
+
+                <!-- Events List -->
+                <div class="space-y-4">
+                    <div v-for="event in filteredEvents" :key="event.id" class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm relative hover:shadow-md transition">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full text-white" :class="getClubColor(event.clubType)">
+                                {{ event.clubName }}
+                            </span>
+                            <span class="bg-amber-100 text-amber-900 font-extrabold text-xs px-2.5 py-1 rounded-lg">
+                                <i class="fa-solid fa-coins text-amber-500 mr-1"></i>+{{ event.points }} pt
+                            </span>
+                        </div>
+
+                        <h3 class="font-bold text-slate-800 text-base mb-1">{{ event.title }}</h3>
+                        <p class="text-xs text-slate-600 mb-3 leading-relaxed">{{ event.description }}</p>
+
+                        <div class="bg-slate-50 rounded-xl p-2.5 text-xs text-slate-600 space-y-1 mb-3">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-regular fa-calendar text-emerald-600 w-4"></i>
+                                <span>{{ event.dateStr }} ({{ event.time }})</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-location-dot text-emerald-600 w-4"></i>
+                                <span>{{ event.location }}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-users text-emerald-600 w-4"></i>
+                                <span>定員 {{ event.joinedCount }} / {{ event.capacity }}名</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1">
+                            <div class="flex -space-x-2 overflow-hidden">
+                                <img v-for="(avatar, i) in event.participantAvatars" :key="i" :src="avatar" class="inline-block h-6 w-6 rounded-full ring-2 ring-white object-cover" alt="Member Avatar">
+                                <span v-if="event.joinedCount > 3" class="flex items-center justify-center h-6 w-6 rounded-full bg-slate-200 text-[10px] font-bold text-slate-600 ring-2 ring-white">
+                                    +{{ event.joinedCount - 3 }}
+                                </span>
+                            </div>
+
+                            <button v-if="!event.isJoined" @click="joinEvent(event)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow">
+                                参加を申し込む
+                            </button>
+                            <button v-else @click="cancelEvent(event)" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs px-4 py-2 rounded-xl transition">
+                                <i class="fa-solid fa-check text-emerald-600 mr-1"></i>参加申込済み
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: POINTS STORE (REWARDS) -->
+            <div v-if="activeTab === 'rewards'" class="space-y-4">
+                <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-md flex justify-between items-center">
+                    <div>
+                        <span class="text-xs font-medium opacity-90">現在の所持ポイント</span>
+                        <div class="text-3xl font-black text-amber-100 leading-tight">
+                            {{ user.points.toLocaleString() }} <span class="text-sm font-bold">pt</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-2xl">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                </div>
+
+                <h2 class="font-extrabold text-slate-800 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-gift text-amber-500"></i>
+                    ポイント交換リワード
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div v-for="reward in rewards" :key="reward.id" class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <div class="w-full h-28 bg-slate-100 rounded-xl mb-3 overflow-hidden relative">
+                                <img :src="reward.image" class="w-full h-full object-cover" alt="Reward Image">
+                                <span class="absolute top-2 right-2 bg-amber-400 text-slate-900 font-black text-xs px-2.5 py-1 rounded-full shadow">
+                                    {{ reward.points.toLocaleString() }} pt
+                                </span>
+                            </div>
+                            <h3 class="font-bold text-slate-800 text-sm mb-1">{{ reward.title }}</h3>
+                            <p class="text-xs text-slate-500 leading-relaxed mb-3">{{ reward.description }}</p>
+                        </div>
+
+                        <button @click="redeemReward(reward)" 
+                                :disabled="user.points < reward.points"
+                                :class="user.points >= reward.points ? 'bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold' : 'bg-slate-200 text-slate-400 font-medium cursor-not-allowed'"
+                                class="w-full py-2.5 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-ticket"></i>
+                            <span>{{ user.points >= reward.points ? '特典と交換する' : 'ポイントが足りません' }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: RANKING & TIMELINE -->
+            <div v-if="activeTab === 'community'" class="space-y-5">
+                
+                <!-- Department & Individual Leaderboards -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="font-extrabold text-slate-800 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-trophy text-amber-500"></i>
+                            月間ランキング
+                        </h2>
+                        <div class="flex bg-slate-100 p-0.5 rounded-xl text-xs">
+                            <button @click="rankingType = 'department'" :class="rankingType === 'department' ? 'bg-white font-bold text-slate-800 shadow-sm' : 'text-slate-500'" class="px-2.5 py-1 rounded-lg transition">部署対抗</button>
+                            <button @click="rankingType = 'individual'" :class="rankingType === 'individual' ? 'bg-white font-bold text-slate-800 shadow-sm' : 'text-slate-500'" class="px-2.5 py-1 rounded-lg transition">個人</button>
+                        </div>
+                    </div>
+
+                    <!-- Department Ranking -->
+                    <div v-if="rankingType === 'department'" class="space-y-2">
+                        <div v-for="(dept, idx) in departmentRanking" :key="idx" class="flex items-center justify-between p-2.5 rounded-xl" :class="idx === 0 ? 'bg-amber-50 border border-amber-200' : 'bg-slate-50'">
+                            <div class="flex items-center space-x-3">
+                                <span class="w-6 h-6 rounded-full font-black text-xs flex items-center justify-center" :class="idx === 0 ? 'bg-amber-400 text-slate-900' : idx === 1 ? 'bg-slate-300 text-slate-800' : 'bg-amber-800/20 text-amber-900'">
+                                    {{ idx + 1 }}
+                                </span>
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-xs">{{ dept.name }}</h4>
+                                    <p class="text-[10px] text-slate-500">参加率: {{ dept.participationRate }}%</p>
+                                </div>
+                            </div>
+                            <span class="font-black text-xs text-slate-700">{{ dept.totalPoints.toLocaleString() }} pt</span>
+                        </div>
+                    </div>
+
+                    <!-- Individual Ranking -->
+                    <div v-if="rankingType === 'individual'" class="space-y-2">
+                        <div v-for="(person, idx) in individualRanking" :key="idx" class="flex items-center justify-between p-2 rounded-xl" :class="person.isMe ? 'bg-emerald-50 border border-emerald-300' : 'bg-slate-50'">
+                            <div class="flex items-center space-x-2.5">
+                                <span class="w-5 h-5 rounded-full font-black text-[11px] flex items-center justify-center" :class="idx === 0 ? 'bg-amber-400 text-slate-900' : 'bg-slate-200 text-slate-600'">
+                                    {{ idx + 1 }}
+                                </span>
+                                <img :src="person.avatar" class="w-8 h-8 rounded-full object-cover border" alt="User">
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-xs">{{ person.name }} <span v-if="person.isMe" class="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded">あなた</span></h4>
+                                    <p class="text-[10px] text-slate-400">{{ person.dept }}</p>
+                                </div>
+                            </div>
+                            <span class="font-black text-xs text-emerald-600">{{ person.points.toLocaleString() }} pt</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Feed -->
+                <div>
+                    <h2 class="font-extrabold text-slate-800 text-base mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-comments text-emerald-600"></i>
+                        部活動タイムライン
+                    </h2>
+
+                    <!-- Post Input Box -->
+                    <div class="bg-white rounded-2xl border border-slate-200 p-3 mb-4 shadow-sm">
+                        <textarea v-model="newPostText" placeholder="活動の様子や感謝のメッセージを投稿しよう！" class="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none h-16"></textarea>
+                        
+                        <div class="flex justify-between items-center mt-2 pt-2 border-t border-slate-100">
+                            <div class="flex items-center gap-2">
+                                <button @click="generatePostDraft" :disabled="isAiPostLoading" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1 border border-indigo-200">
+                                    <i v-if="isAiPostLoading" class="fa-solid fa-spinner fa-spin"></i>
+                                    <i v-else class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i>
+                                    <span>AIで投稿文を作成</span>
+                                </button>
+                            </div>
+                            <button @click="addPost()" class="bg-emerald-600 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg hover:bg-emerald-700 transition">
+                                投稿する
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Posts -->
+                    <div class="space-y-3">
+                        <div v-for="post in posts" :key="post.id" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center space-x-2.5">
+                                    <img :src="post.avatar" class="w-8 h-8 rounded-full object-cover" alt="Avatar">
+                                    <div>
+                                        <div class="font-bold text-slate-800 text-xs">{{ post.author }}</div>
+                                        <div class="text-[10px] text-slate-400">{{ post.dept }} • {{ post.timeAgo }}</div>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                                    {{ post.clubName }}
+                                </span>
+                            </div>
+
+                            <p class="text-xs text-slate-700 leading-relaxed">{{ post.content }}</p>
+
+                            <div v-if="post.image" class="rounded-xl overflow-hidden h-40 bg-slate-100">
+                                <img :src="post.image" class="w-full h-full object-cover" alt="Post Image">
+                            </div>
+
+                            <div class="flex items-center space-x-4 pt-1 text-slate-500 text-xs">
+                                <button @click="likePost(post)" class="flex items-center gap-1 hover:text-rose-500 transition" :class="post.isLiked ? 'text-rose-500 font-bold' : ''">
+                                    <i :class="post.isLiked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'"></i>
+                                    <span>{{ post.likes }}</span>
+                                </button>
+                                <span class="flex items-center gap-1">
+                                    <i class="fa-regular fa-comment"></i>
+                                    <span>{{ post.comments }}</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TAB 5: ADMIN DASHBOARD (VISIBLE IN ADMIN MODE) -->
+            <div v-if="activeTab === 'admin' || isAdmin" class="space-y-5">
+                <div class="bg-amber-500 text-slate-900 rounded-2xl p-4 shadow-md flex justify-between items-center">
+                    <div>
+                        <h2 class="font-black text-base">管理者用 ダッシュボード</h2>
+                        <p class="text-xs font-medium opacity-90">イベント作成・QR発行・AI企画アシスタント</p>
+                    </div>
+                    <i class="fa-solid fa-sliders text-2xl"></i>
+                </div>
+
+                <!-- AI Event Generator Assistant -->
+                <div class="bg-gradient-to-br from-slate-900 to-indigo-950 border border-indigo-500/40 rounded-2xl p-4 text-white shadow-md space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-extrabold text-sm flex items-center gap-2 text-indigo-200">
+                            <i class="fa-solid fa-brain text-indigo-400"></i>
+                            Gemini AI 部活イベント自動企画
+                        </h3>
+                        <span class="text-[10px] bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 px-2 py-0.5 rounded-full font-bold">AI自動提案</span>
+                    </div>
+                    <p class="text-xs text-indigo-200/80">テーマや目的を入力すると、Gemini AIが参加したくなるイベントタイトル・説明・ポイント設計を自動作成します。</p>
+
+                    <div class="flex gap-2">
+                        <input v-model="aiAdminPrompt" type="text" placeholder="例: 「運動不足のエンジニア向けランチタイムストレッチ」" class="flex-1 bg-white/10 border border-indigo-400/30 text-white placeholder-indigo-300/50 text-xs p-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                        <button @click="generateAdminEventIdea" :disabled="isAiAdminLoading" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shrink-0">
+                            <i v-if="isAiAdminLoading" class="fa-solid fa-spinner fa-spin"></i>
+                            <i v-else class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>AI企画生成</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Create Event Form -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-plus-circle text-emerald-600"></i>
+                            新規部活イベントを登録
+                        </h3>
+                        <button @click="generateEventPoster" :disabled="isAiImageLoading" class="text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-bold px-2.5 py-1.5 rounded-xl transition flex items-center gap-1">
+                            <i v-if="isAiImageLoading" class="fa-solid fa-spinner fa-spin"></i>
+                            <i v-else class="fa-solid fa-image text-purple-600"></i>
+                            <span>AIポスター画像生成</span>
+                        </button>
+                    </div>
+
+                    <!-- AI Generated Poster Preview -->
+                    <div v-if="newEventPoster" class="relative rounded-xl overflow-hidden border border-slate-200 h-36 bg-slate-100">
+                        <img :src="newEventPoster" class="w-full h-full object-cover" alt="AI Generated Poster">
+                        <span class="absolute top-2 right-2 bg-slate-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur">Gemini AI Image</span>
+                    </div>
+                    
+                    <div class="space-y-2 text-xs">
+                        <div>
+                            <label class="block text-slate-600 font-bold mb-1">対象部活動</label>
+                            <select v-model="newEvent.clubName" class="w-full p-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option v-for="c in clubs" :key="c.id" :value="c.name">{{ c.name }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-slate-600 font-bold mb-1">イベントタイトル</label>
+                            <input v-model="newEvent.title" type="text" placeholder="例: 平日夜フットサル練習会" class="w-full p-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-slate-600 font-bold mb-1">イベント説明</label>
+                            <textarea v-model="newEvent.description" placeholder="イベントの詳細説明..." class="w-full p-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 h-16 resize-none"></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-slate-600 font-bold mb-1">開催日時</label>
+                                <input v-model="newEvent.dateStr" type="text" placeholder="9月25日(水)" class="w-full p-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-slate-600 font-bold mb-1">付与ポイント</label>
+                                <input v-model.number="newEvent.points" type="number" class="w-full p-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-slate-600 font-bold mb-1">場所</label>
+                            <input v-model="newEvent.location" type="text" placeholder="例: 社内マルチスペースA" class="w-full p-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                    </div>
+
+                    <button @click="createEvent()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 rounded-xl transition mt-2">
+                        イベントを作成して公開
+                    </button>
+                </div>
+
+                <!-- Admin Event List & QR Code Issuer -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+                    <h3 class="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-qrcode text-emerald-600"></i>
+                        部活動チェックイン用QRコード発行
+                    </h3>
+
+                    <div class="space-y-2">
+                        <div v-for="e in events" :key="e.id" class="p-3 bg-slate-50 rounded-xl flex justify-between items-center">
+                            <div>
+                                <span class="text-[10px] font-bold px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md">{{ e.clubName }}</span>
+                                <h4 class="font-bold text-slate-800 text-xs mt-1">{{ e.title }}</h4>
+                            </div>
+                            <button @click="showQrModal(e)" class="bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition">
+                                QRコード表示
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+
+        <!-- Navigation Bar (Mobile / Sticky Bottom) -->
+        <nav :class="isDarkMode ? 'bg-slate-800/95 border-slate-700' : 'bg-white/95 border-slate-200'" class="fixed bottom-0 left-0 right-0 max-w-md md:max-w-4xl mx-auto backdrop-blur-md border-t z-40 px-3 py-2 flex justify-around items-center transition-colors duration-200">
+            <button @click="activeTab = 'home'" :class="activeTab === 'home' ? themeActiveText : (isDarkMode ? 'text-slate-400' : 'text-slate-400')" class="flex flex-col items-center gap-0.5 text-xs py-1 transition">
+                <i class="fa-solid fa-house text-lg"></i>
+                <span class="text-[10px]">ホーム</span>
+            </button>
+
+            <button @click="activeTab = 'events'" :class="activeTab === 'events' ? themeActiveText : (isDarkMode ? 'text-slate-400' : 'text-slate-400')" class="flex flex-col items-center gap-0.5 text-xs py-1 transition">
+                <i class="fa-solid fa-calendar-days text-lg"></i>
+                <span class="text-[10px]">部活探す</span>
+            </button>
+
+            <button @click="openCheckInModal()" :class="themeBtnGradient" class="flex flex-col items-center justify-center -mt-5 text-white w-12 h-12 rounded-full shadow-lg hover:scale-105 transition">
+                <i class="fa-solid fa-qrcode text-xl"></i>
+            </button>
+
+            <button @click="activeTab = 'rewards'" :class="activeTab === 'rewards' ? themeActiveText : (isDarkMode ? 'text-slate-400' : 'text-slate-400')" class="flex flex-col items-center gap-0.5 text-xs py-1 transition">
+                <i class="fa-solid fa-gift text-lg"></i>
+                <span class="text-[10px]">交換所</span>
+            </button>
+
+            <button @click="activeTab = 'community'" :class="activeTab === 'community' ? themeActiveText : (isDarkMode ? 'text-slate-400' : 'text-slate-400')" class="flex flex-col items-center gap-0.5 text-xs py-1 transition">
+                <i class="fa-solid fa-trophy text-lg"></i>
+                <span class="text-[10px]">社内広場</span>
+            </button>
+        </nav>
+
+        <!-- MODAL: UI CUSTOMIZATION / THEME SETTINGS -->
+        <div v-if="showThemeModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div :class="isDarkMode ? 'bg-slate-800 text-white' : 'bg-white text-slate-800'" class="rounded-3xl max-w-sm w-full p-6 shadow-2xl relative space-y-5 animate-bounce-short">
+                <button @click="showThemeModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-palette"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-extrabold text-base">UIデザイン編集</h3>
+                        <p class="text-xs text-slate-400">アプリの見た目をリアルタイムに変更できます</p>
+                    </div>
+                </div>
+
+        <!-- MODAL 2: CHECK-IN MODAL -->
+        <div v-if="showCheckInModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4 relative">
+                <button @click="showCheckInModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+
+                <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-2xl font-bold">
+                    <i class="fa-solid fa-qrcode"></i>
+                </div>
+
+                <div>
+                    <h3 class="font-extrabold text-slate-800 text-base">部活動チェックイン</h3>
+                    <p class="text-xs text-slate-500 mt-1">会場のQRコードを読み取るか、チェックインボタンを押してポイントを獲得！</p>
+                </div>
+
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-left space-y-1">
+                    <div class="font-bold text-slate-700">獲得ポイント: <span class="text-emerald-600">+150 pt</span></div>
+                    <div class="text-slate-500">ボーナス: 初回参加ボーナス対象</div>
+                </div>
+
+                <button @click="completeCheckIn()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg hover:brightness-105 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check"></i>
+                    <span>チェックイン完了</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- MODAL 3: SUCCESS CELEBRATION MODAL -->
+        <div v-if="showSuccessModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4 relative animate-bounce-short">
+                <div class="w-16 h-16 rounded-full bg-amber-400 text-slate-900 flex items-center justify-center mx-auto text-3xl font-black shadow-lg">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+
+                <div>
+                    <h3 class="font-black text-slate-800 text-lg">チェックイン完了！</h3>
+                    <p class="text-xs text-slate-500 mt-1">運動お疲れ様でした！</p>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                    <div class="text-2xl font-black text-amber-600">+150 pt</div>
+                    <div class="text-[10px] text-amber-800 font-bold mt-0.5">ポイントを獲得しました！</div>
+                </div>
+
+                <button @click="showSuccessModal = false" class="w-full bg-slate-900 text-white font-bold text-xs py-2.5 rounded-xl transition shadow">
+                    閉じる
+                </button>
+            </div>
+        </div>
+
+        <!-- MODAL 4: QR CODE DISPLAY MODAL -->
+        <div v-if="showQrDisplayModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4 relative">
+                <button @click="showQrDisplayModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+
+                <h3 class="font-extrabold text-slate-800 text-base">会場チェックイン用QR</h3>
+                <p class="text-xs text-slate-500">{{ activeAdminEvent?.title }}</p>
+
+                <div class="bg-white p-4 border-2 border-slate-200 rounded-2xl inline-block shadow-inner">
+                    <!-- SVG Dummy QR Code -->
+                    <svg class="w-44 h-44 mx-auto" viewBox="0 0 100 100" fill="currentColor">
+                        <path d="M0,0 h30 v30 h-30 z M5,5 v20 h20 v-20 z M10,10 h10 v10 h-10 z" />
+                        <path d="M70,0 h30 v30 h-30 z M75,5 v20 h20 v-20 z M80,10 h10 v10 h-10 z" />
+                        <path d="M0,70 h30 v30 h-30 z M5,75 v20 h20 v-20 z M10,80 h10 v10 h-10 z" />
+                        <rect x="40" y="10" width="10" height="20" />
+                        <rect x="55" y="5" width="10" height="10" />
+                        <rect x="35" y="35" width="30" height="30" />
+                        <rect x="70" y="45" width="20" height="10" />
+                        <rect x="45" y="70" width="15" height="25" />
+                        <rect x="70" y="75" width="20" height="20" />
+                    </svg>
+                </div>
+
+                <p class="text-[11px] text-slate-400">参加者にこの画面を提示してください</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+
+        // Gemini AI Helper Functions
+        async function callGeminiText(prompt, systemInstruction = "", responseSchema = null) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            if (responseSchema) {
+                return {
+                    clubName: prompt.includes("ヨガ") ? "ヨガ＆ピラティス" : prompt.includes("ラン") ? "ランニング部" : "フットサル部",
+                    title: prompt + " 企画イベント",
+                    description: `「${prompt}」をテーマにした社内健康イベントです！みんなでリフレッシュしましょう。`,
+                    dateStr: "10月15日(水)",
+                    time: "18:30 - 19:30",
+                    location: "社内マルチスペース",
+                    points: 200
+                };
+            }
+
+            if (systemInstruction.includes("コーチ")) {
+                return `【AIコーチのアドバイス】\n「${prompt}」ですね！素晴らしい意識です👏\nおすすめは「ヨガ＆ピラティス部」や「ランニング部（ウォーク参加OK）」です。無理なく短時間から参加して、ポイントも手に入れましょう！`;
+            }
+
+            if (systemInstruction.includes("タイムライン")) {
+                return `【今日の部活報告】\n「${prompt}」に参加してきました！爽やかな汗をかいて最高のリフレッシュになりました🏃‍♂️✨ 次回のイベントも楽しみです！ #SpoPoin #社内スポ活`;
+            }
+
+            return `「${prompt}」に関する提案：みんなで楽しく運動して健康意識を高めましょう！`;
+        }
+
+        async function callGeminiImage(prompt) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return "https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=600&auto=format&fit=crop&q=80";
+        }
+
+        createApp({
+            setup() {
+                // User State
+                const user = ref({
+                    name: "山田 太郎",
+                    department: "開発部",
+                    points: 1250,
+                    level: 3,
+                    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+                });
+
+                const isAdmin = ref(false);
+                const activeTab = ref('home');
+                const rankingType = ref('department');
+                const selectedClubFilter = ref('ALL');
+
+                // AI Coach State
+                const aiCoachInput = ref("");
+                const aiCoachResult = ref("");
+                const isAiCoachLoading = ref(false);
+
+                // AI Admin Event Generator State
+                const aiAdminPrompt = ref("");
+                const isAiAdminLoading = ref(false);
+
+                // AI Timeline Post Generator State
+                const isAiPostLoading = ref(false);
+
+                // AI Image Generator State
+                const newEventPoster = ref(null);
+                const isAiImageLoading = ref(false);
+
+                // UI Theme & Customization State
+                const currentTheme = ref('emerald');
+                const isDarkMode = ref(false);
+                const showThemeModal = ref(false);
+
+                // Modals
+                const showCheckInModal = ref(false);
+                const showSuccessModal = ref(false);
+                const showQrDisplayModal = ref(false);
+                const activeAdminEvent = ref(null);
+
+                // Clubs Data
+                const clubs = ref([
+                    { id: 1, name: "フットサル部", activeMembers: 12, icon: "fa-solid fa-futbol", bgColor: "bg-emerald-600" },
+                    { id: 2, name: "ランニング部", activeMembers: 6, icon: "fa-solid fa-person-running", bgColor: "bg-cyan-600" },
+                    { id: 3, name: "ヨガ＆ピラティス", activeMembers: 15, icon: "fa-solid fa-spa", bgColor: "bg-purple-600" },
+                    { id: 4, name: "バスケットボール部", activeMembers: 5, icon: "fa-solid fa-basketball", bgColor: "bg-amber-600" },
+                    { id: 5, name: "卓球部", activeMembers: 7, icon: "fa-solid fa-table-tennis-paddle-ball", bgColor: "bg-rose-600" }
+                ]);
+
+                // Events Data
+                const events = ref([
+                    {
+                        id: 1,
+                        clubName: "フットサル部",
+                        clubType: "futsal",
+                        title: "水曜フレンドリーマッチ＆練習会",
+                        description: "初心者大歓迎！楽しく体を動かすことを目的に基礎練習からゲームまで行います。",
+                        dateStr: "10月2日(水)",
+                        month: "10月",
+                        day: "02",
+                        time: "19:00 - 21:00",
+                        location: "品川インドアフットサルコート",
+                        points: 200,
+                        joinedCount: 6,
+                        capacity: 10,
+                        isJoined: true,
+                        participantAvatars: [
+                            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+                            "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80"
+                        ]
+                    },
+                    {
+                        id: 2,
+                        clubName: "ヨガ＆ピラティス",
+                        clubType: "yoga",
+                        title: "デスクワーク撃退！肩こり解消ナイトヨガ",
+                        description: "1日の疲れをリフレッシュ。呼吸法とストレッチ中心の優しいレッスンです。",
+                        dateStr: "10月4日(金)",
+                        month: "10月",
+                        day: "04",
+                        time: "18:30 - 19:30",
+                        location: "本社 5F 多目的ルーム",
+                        points: 150,
+                        joinedCount: 12,
+                        capacity: 15,
+                        isJoined: false,
+                        participantAvatars: [
+                            "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80"
+                        ]
+                    },
+                    {
+                        id: 3,
+                        clubName: "ランニング部",
+                        clubType: "running",
+                        title: "皇居ラン＆ライトナイトラン",
+                        description: "自分のペースで走れるグループ分けあり。ランニング後はカフェでサクッと交流！",
+                        dateStr: "10月8日(火)",
+                        month: "10月",
+                        day: "08",
+                        time: "19:00 - 20:15",
+                        location: "皇居周回コース (桜田門集合)",
+                        points: 180,
+                        joinedCount: 5,
+                        capacity: 12,
+                        isJoined: false,
+                        participantAvatars: [
+                            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80"
+                        ]
+                    }
+                ]);
+
+                // Theme Dynamic Computed Styles
+                const themeHeaderBg = computed(() => {
+                    switch(currentTheme.value) {
+                        case 'indigo': return 'bg-gradient-to-r from-indigo-700 via-blue-700 to-indigo-800';
+                        case 'rose': return 'bg-gradient-to-r from-rose-600 via-pink-600 to-rose-700';
+                        case 'amber': return 'bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700';
+                        default: return 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700';
+                    }
+                });
+
+                const themeActiveText = computed(() => {
+                    switch(currentTheme.value) {
+                        case 'indigo': return 'text-indigo-600 font-bold';
+                        case 'rose': return 'text-rose-600 font-bold';
+                        case 'amber': return 'text-amber-600 font-bold';
+                        default: return 'text-emerald-600 font-bold';
+                    }
+                });
+
+                const themeBtnGradient = computed(() => {
+                    switch(currentTheme.value) {
+                        case 'indigo': return 'bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700';
+                        case 'rose': return 'bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700';
+                        case 'amber': return 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700';
+                        default: return 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700';
+                    }
+                });
+
+                // Rewards Data
+                const rewards = ref([
+                    {
+                        id: 1,
+                        title: "社内カフェ・ドリンク1杯券",
+                        description: "社内カフェで好きなスペシャルティコーヒーやスムージーと交換できます。",
+                        points: 300,
+                        image: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=300&auto=format&fit=crop&q=80"
+                    },
+                    {
+                        id: 2,
+                        title: "Amazonギフトカード 1,000円分",
+                        description: "運動のご褒美に！デジタルコードを社内チャットで即時発行します。",
+                        points: 1000,
+                        image: "https://images.unsplash.com/photo-1556742049-0a670f4a4591?w=300&auto=format&fit=crop&q=80"
+                    },
+                    {
+                        id: 3,
+                        title: "健康促進！プロテインシェイカー＋お試しセット",
+                        description: "運動効率アップのための人気のプロテインと専用シェイカーの特別セット。",
+                        points: 1500,
+                        image: "https://images.unsplash.com/photo-1579722820308-d74e571900a9?w=300&auto=format&fit=crop&q=80"
+                    },
+                    {
+                        id: 4,
+                        title: "「リフレッシュ特別有給（半日）」取得権",
+                        description: "運動部活動への貢献を称え、半日分の特別有休を付与！（※人事承認済）",
+                        points: 3000,
+                        image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80"
+                    }
+                ]);
+
+                // Department Ranking
+                const departmentRanking = ref([
+                    { name: "営業第一部", totalPoints: 12400, participationRate: 78 },
+                    { name: "開発部", totalPoints: 9800, participationRate: 65 },
+                    { name: "人事・総務部", totalPoints: 8200, participationRate: 82 },
+                    { name: "マーケティング部", totalPoints: 6100, participationRate: 45 }
+                ]);
+
+                // Individual Ranking
+                const individualRanking = ref([
+                    { name: "佐藤 健太", dept: "営業第一部", points: 2150, avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80", isMe: false },
+                    { name: "山田 太郎", dept: "開発部", points: 1250, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80", isMe: true },
+                    { name: "鈴木 美咲", dept: "人事部", points: 1100, avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80", isMe: false },
+                    { name: "高橋 誠", dept: "マーケ部", points: 950, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80", isMe: false }
+                ]);
+
+                // Posts Data
+                const posts = ref([
+                    {
+                        id: 1,
+                        author: "高橋 誠",
+                        dept: "マーケ部",
+                        clubName: "フットサル部",
+                        timeAgo: "2時間前",
+                        content: "昨日のフットサル部練習会！久々に汗を流してリフレッシュできました⚽️ 次回は来週水曜です！他部署の参加もお待ちしてます！",
+                        image: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=500&auto=format&fit=crop&q=80",
+                        likes: 12,
+                        comments: 3,
+                        isLiked: false,
+                        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80"
+                    }
+                ]);
+
+                const newPostText = ref("");
+
+                // New Event Form State
+                const newEvent = ref({
+                    clubName: "フットサル部",
+                    title: "",
+                    description: "",
+                    dateStr: "",
+                    location: "",
+                    points: 150
+                });
+
+                // 1. AI Coach Advice Generation
+                const generateCoachAdvice = async () => {
+                    if (!aiCoachInput.value.trim()) return;
+                    isAiCoachLoading.value = true;
+                    try {
+                        const systemPrompt = "あなたは企業の社内運動部活（SpoPoin）のフレンドリーで親身なAI健康・運動コーチです。ユーザーの悩みや体調、運動の希望を聞いて、適切なアドバイスと、おすすめの部活（フットサル部、ランニング部、ヨガ＆ピラティス、バスケットボール部、卓球部）を1〜2つ提案してください。150文字程度で簡潔かつ前向きに答えてください。";
+                        const result = await callGeminiText(aiCoachInput.value, systemPrompt);
+                        aiCoachResult.value = result;
+                    } catch (err) {
+                        alert("AI回答の生成に失敗しました: " + err.message);
+                    } finally {
+                        isAiCoachLoading.value = false;
+                    }
+                };
+
+                // 2. AI Admin Event Auto-Planner
+                const generateAdminEventIdea = async () => {
+                    if (!aiAdminPrompt.value.trim()) {
+                        alert("テーマやキーワードを入力してください（例: テレワーク続きの社員向けヨガ）");
+                        return;
+                    }
+                    isAiAdminLoading.value = true;
+                    try {
+                        const systemPrompt = "社内運動部（SpoPoin）のイベント企画プロデューサーです。与えられたテーマを元に、楽しく参加率が上がる部活イベントの企画詳細をJSON形式で作成してください。既存の部活名（フットサル部, ランニング部, ヨガ＆ピラティス, バスケットボール部, 卓球部）から一つ選んでください。";
+                        
+                        const schema = {
+                            type: "OBJECT",
+                            properties: {
+                                clubName: { type: "STRING" },
+                                title: { type: "STRING" },
+                                description: { type: "STRING" },
+                                dateStr: { type: "STRING" },
+                                time: { type: "STRING" },
+                                location: { type: "STRING" },
+                                points: { type: "NUMBER" }
+                            },
+                            required: ["clubName", "title", "description", "dateStr", "time", "location", "points"]
+                        };
+
+                        const plan = await callGeminiText(aiAdminPrompt.value, systemPrompt, schema);
+                        
+                        // Populate the form with AI generated event data
+                        newEvent.value.clubName = plan.clubName || "ヨガ＆ピラティス";
+                        newEvent.value.title = plan.title;
+                        newEvent.value.description = plan.description;
+                        newEvent.value.dateStr = plan.dateStr || "10月10日(金)";
+                        newEvent.value.location = plan.location || "社内ホール";
+                        newEvent.value.points = plan.points || 150;
+
+                        alert("✨ AIがイベント企画を作成し、フォームに自動入力しました！内容を確認して公開ボタンを押してください。");
+                    } catch (err) {
+                        alert("AIイベント作成エラー: " + err.message);
+                    } finally {
+                        isAiAdminLoading.value = false;
+                    }
+                };
+
+                // 3. AI Timeline Post Draft Generator
+                const generatePostDraft = async () => {
+                    isAiPostLoading.value = true;
+                    try {
+                        const userTopic = newPostText.value || "今日の部活イベントに参加した感想";
+                        const systemPrompt = "社内運動部アプリのタイムライン投稿アシスタントです。ユーザーの簡単なメモから、絵文字が入った元気で社内メンバーと良好な関係が築ける活動報告投稿（100文字程度）を作成してください。";
+                        const draft = await callGeminiText(userTopic, systemPrompt);
+                        newPostText.value = draft;
+                    } catch (err) {
+                        alert("投稿文の生成に失敗しました: " + err.message);
+                    } finally {
+                        isAiPostLoading.value = false;
+                    }
+                };
+
+                // 4. AI Poster Image Generator
+                const generateEventPoster = async () => {
+                    const promptText = `A vibrant, cheerful corporate sports club banner artwork for ${newEvent.value.title || 'company sports activity'}, bright modern gradient background, high resolution`;
+                    isAiImageLoading.value = true;
+                    try {
+                        const imgUrl = await callGeminiImage(promptText);
+                        newEventPoster.value = imgUrl;
+                    } catch (err) {
+                        alert("AIポスター画像の生成に失敗しました: " + err.message);
+                    } finally {
+                        isAiImageLoading.value = false;
+                    }
+                };
+
+                // Computed
+                const joinedEvents = computed(() => events.value.filter(e => e.isJoined));
+                const filteredEvents = computed(() => {
+                    if (selectedClubFilter.value === 'ALL') return events.value;
+                    return events.value.filter(e => e.clubName === selectedClubFilter.value);
+                });
+
+                // Helper Methods
+                const getClubColor = (type) => {
+                    switch(type) {
+                        case 'futsal': return 'bg-emerald-600';
+                        case 'running': return 'bg-cyan-600';
+                        case 'yoga': return 'bg-purple-600';
+                        default: return 'bg-slate-700';
+                    }
+                };
+
+                const filterClubEvents = (clubName) => {
+                    selectedClubFilter.value = clubName;
+                    activeTab.value = 'events';
+                };
+
+                const joinEvent = (event) => {
+                    event.isJoined = true;
+                    event.joinedCount++;
+                };
+
+                const cancelEvent = (event) => {
+                    event.isJoined = false;
+                    event.joinedCount--;
+                };
+
+                // Check-in Methods
+                const openCheckInModal = (event = null) => {
+                    showCheckInModal.value = true;
+                };
+
+                const completeCheckIn = () => {
+                    showCheckInModal.value = false;
+                    user.value.points += 150;
+                    showSuccessModal.value = true;
+
+                    // Trigger Confetti Celebration
+                    if (window.confetti) {
+                        confetti({
+                            particleCount: 100,
+                            spread: 70,
+                            origin: { y: 0.6 }
+                        });
+                    }
+                };
+
+                // Redeem Reward
+                const redeemReward = (reward) => {
+                    if (user.value.points >= reward.points) {
+                        user.value.points -= reward.points;
+                        alert(`「${reward.title}」と交換申請が完了しました！社内チャットまたはメールをご確認ください。`);
+                        if (window.confetti) {
+                            confetti({
+                                particleCount: 80,
+                                spread: 60,
+                                origin: { y: 0.6 }
+                            });
+                        }
+                    }
+                };
+
+                // Community Methods
+                const likePost = (post) => {
+                    post.isLiked = !post.isLiked;
+                    post.likes += post.isLiked ? 1 : -1;
+                };
+
+                const addPost = () => {
+                    if (!newPostText.value.trim()) return;
+                    posts.value.unshift({
+                        id: Date.now(),
+                        author: user.value.name,
+                        dept: user.value.department,
+                        clubName: "社内運動部",
+                        timeAgo: "たった今",
+                        content: newPostText.value,
+                        image: null,
+                        likes: 0,
+                        comments: 0,
+                        isLiked: false,
+                        avatar: user.value.avatar
+                    });
+                    newPostText.value = "";
+                };
+
+                // Admin Methods
+                const createEvent = () => {
+                    if (!newEvent.value.title || !newEvent.value.dateStr) {
+                        alert("タイトルと日時を入力してください。");
+                        return;
+                    }
+                    events.value.unshift({
+                        id: Date.now(),
+                        clubName: newEvent.value.clubName,
+                        clubType: 'futsal',
+                        title: newEvent.value.title,
+                        description: newEvent.value.description || "管理者によって追加された運動部イベントです！",
+                        dateStr: newEvent.value.dateStr,
+                        month: "10月",
+                        day: "05",
+                        time: "19:00 - 20:30",
+                        location: newEvent.value.location || "社内アリーナ",
+                        points: newEvent.value.points || 150,
+                        joinedCount: 1,
+                        capacity: 10,
+                        isJoined: false,
+                        participantAvatars: [user.value.avatar]
+                    });
+
+                    alert("新規イベントを公開しました！");
+                    newEvent.value.title = "";
+                    newEvent.value.description = "";
+                    newEvent.value.dateStr = "";
+                    newEvent.value.location = "";
+                    newEventPoster.value = null;
+                };
+
+                const showQrModal = (event) => {
+                    activeAdminEvent.value = event;
+                    showQrDisplayModal.value = true;
+                };
+
+                return {
+                    user,
+                    isAdmin,
+                    activeTab,
+                    rankingType,
+                    selectedClubFilter,
+                    currentTheme,
+                    isDarkMode,
+                    showThemeModal,
+                    themeHeaderBg,
+                    themeActiveText,
+                    themeBtnGradient,
+                    clubs,
+                    events,
+                    rewards,
+                    departmentRanking,
+                    individualRanking,
+                    posts,
+                    newPostText,
+                    newEvent,
+                    joinedEvents,
+                    filteredEvents,
+                    showCheckInModal,
+                    showSuccessModal,
+                    showQrDisplayModal,
+                    activeAdminEvent,
+                    
+                    // AI Gemini States & Methods
+                    aiCoachInput,
+                    aiCoachResult,
+                    isAiCoachLoading,
+                    generateCoachAdvice,
+                    aiAdminPrompt,
+                    isAiAdminLoading,
+                    generateAdminEventIdea,
+                    isAiPostLoading,
+                    generatePostDraft,
+                    newEventPoster,
+                    isAiImageLoading,
+                    generateEventPoster,
+
+                    getClubColor,
+                    filterClubEvents,
+                    joinEvent,
+                    cancelEvent,
+                    openCheckInModal,
+                    completeCheckIn,
+                    redeemReward,
+                    likePost,
+                    addPost,
+                    createEvent,
+                    showQrModal
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
